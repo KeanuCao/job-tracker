@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}岗位详情 - {{ job['company'] }}{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h1>岗位详情</h1>
+
+  <table class="info-table">
+    <tr><th>开始日期</th><td>{{ job['start_date'] }}</td></tr>
+    <tr><th>公司名称</th><td class="strong">{{ job['company'] }}</td></tr>
+    <tr><th>职位名称</th><td>{{ job['position'] }}</td></tr>
+    <tr><th>当前状态</th><td><span class="badge">{{ job['status'] }}</span></td></tr>
+    <tr><th>创建时间</th><td>{{ job['created_at'] }}</td></tr>
+    <tr><th>最近修改</th><td>{{ job['updated_at'] }}</td></tr>
+  </table>
+
+  <div class="detail-actions">
+    <a class="btn" href="{{ url_for('index') }}">返回列表</a>
+    <form method="post" action="{{ url_for('delete_job', job_id=job['id']) }}" class="inline-form"
+          onsubmit="return confirm('确定要删除这条岗位记录吗？删除后不可恢复。');">
+      <button type="submit" class="btn danger">删除该岗位</button>
+    </form>
+  </div>
+</section>
+
+<section class="card">
+  <h1>状态流转记录</h1>
+  <table class="job-table">
+    <thead>
+      <tr>
+        <th class="col-idx">#</th>
+        <th>状态</th>
+        <th>修改时间</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for h in history %}
+        <tr>
+          <td class="col-idx">{{ loop.revindex }}</td>
+          <td class="strong">{{ h['status'] }}</td>
+          <td>{{ h['changed_at'] }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="3" class="empty">暂无状态记录。</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="hint">最新的改动排在最上面；最早的一条是创建岗位时的初始状态。</p>
+</section>
+{% endblock %}

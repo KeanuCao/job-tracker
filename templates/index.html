@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}求职 Tracker - 岗位列表{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h1>新增岗位</h1>
+  <form method="post" action="{{ url_for('create_job') }}" class="create-form">
+    <div class="field">
+      <label for="start_date">开始日期</label>
+      <input type="date" id="start_date" name="start_date" value="{{ today }}" required>
+    </div>
+    <div class="field">
+      <label for="company">公司名称</label>
+      <input type="text" id="company" name="company" placeholder="例如：某某科技有限公司" required>
+    </div>
+    <div class="field">
+      <label for="position">职位名称</label>
+      <input type="text" id="position" name="position" placeholder="例如：后端开发工程师" required>
+    </div>
+    <div class="field">
+      <label for="status">Job 状态</label>
+      <select id="status" name="status">
+        {% for s in statuses %}
+          <option value="{{ s }}" {% if s == default_status %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field field-submit">
+      <label>&nbsp;</label>
+      <button type="submit" class="btn primary big">创建</button>
+    </div>
+  </form>
+</section>
+
+<section class="card">
+  <h1>岗位列表<span class="count">（共 {{ total }} 条，第 {{ page }} / {{ total_pages }} 页）</span></h1>
+
+  <table class="job-table">
+    <thead>
+      <tr>
+        <th class="col-date">开始日期</th>
+        <th>公司名称</th>
+        <th>职位名称</th>
+        <th class="col-status">状态（可直接修改）</th>
+        <th class="col-ops">操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for job in jobs %}
+        <tr>
+          <td class="col-date">{{ job['start_date'] }}</td>
+          <td class="strong">{{ job['company'] }}</td>
+          <td>{{ job['position'] }}</td>
+          <td class="col-status">
+            <form method="post" action="{{ url_for('update_status', job_id=job['id']) }}" class="status-form">
+              <input type="hidden" name="back" value="{{ url_for('index', page=page) }}">
+              <select name="status">
+                {% for s in statuses %}
+                  <option value="{{ s }}" {% if s == job['status'] %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="btn small">保存状态</button>
+            </form>
+            <div class="hint">最近修改：{{ job['updated_at'] }}</div>
+          </td>
+          <td class="col-ops">
+            <a class="btn small" href="{{ url_for('job_detail', job_id=job['id']) }}">详情</a>
+            <form method="post" action="{{ url_for('delete_job', job_id=job['id']) }}" class="inline-form"
+                  onsubmit="return confirm('确定要删除这条岗位记录吗？删除后不可恢复。');">
+              <button type="submit" class="btn small danger">删除</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="5" class="empty">还没有岗位记录，请在上方填写后点击「创建」。</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if total_pages > 1 %}
+    <nav class="pager">
+      {% if page > 1 %}
+        <a class="btn" href="{{ url_for('index', page=page - 1) }}">上一页</a>
+      {% else %}
+        <span class="btn disabled">上一页</span>
+      {% endif %}
+
+      {% for p in range(1, total_pages + 1) %}
+        {% if p == page %}
+          <span class="btn page current">{{ p }}</span>
+        {% else %}
+          <a class="btn page" href="{{ url_for('index', page=p) }}">{{ p }}</a>
+        {% endif %}
+      {% endfor %}
+
+      {% if page < total_pages %}
+        <a class="btn" href="{{ url_for('index', page=page + 1) }}">下一页</a>
+      {% else %}
+        <span class="btn disabled">下一页</span>
+      {% endif %}
+    </nav>
+  {% endif %}
+</section>
+{% endblock %}

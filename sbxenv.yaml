@@ -1,0 +1,7 @@
+schemaVersion: "1"
+name: job-tracker
+agent: claude
+workspace: .          # 新增这一行，挂载环境文件所在目录
+env:
+  ANTHROPIC_BASE_URL: "https://api.deepseek.com/anthropic"
+  ANTHROPIC_MODEL: "deepseek-flash[1m]"
