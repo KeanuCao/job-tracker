@@ -48,12 +48,17 @@ body {
 .count { font-size: 19px; font-weight: 400; color: #5a5a5a; }
 
 /* 表单 */
-.create-form {
+.create-form,
+.search-form {
   display: flex;
   flex-wrap: wrap;
   gap: 20px;
   align-items: flex-end;
 }
+.search-form { margin-bottom: 24px; }
+/* 搜索框占满剩余宽度，按钮按内容宽度排列 */
+.search-form .field { min-width: 0; flex: 0 0 auto; }
+.search-form .field:first-child { flex: 1 1 360px; min-width: 220px; }
 .field { display: flex; flex-direction: column; gap: 8px; min-width: 220px; flex: 1 1 220px; }
 .field label { font-weight: 700; font-size: 19px; }
 

@@ -13,6 +13,7 @@
 import os
 import sqlite3
 from datetime import date, datetime
+from urllib.parse import quote
 
 from flask import (Flask, flash, g, redirect, render_template, request,
                    url_for)
@@ -94,12 +95,32 @@ def get_job_or_none(job_id):
     return row
 
 
+def like_pattern(keyword):
+    """把用户输入转成 LIKE 模糊匹配模式，并转义 % 和 _。
+
+    配合 SQL 里的 ESCAPE '\' 使用，避免用户输入的 % _ 被当成通配符。
+    """
+    escaped = (
+        keyword.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    )
+    return "%" + escaped + "%"
+
+
+def safe_back(default):
+    """只接受站内相对路径的回跳地址，防止被构造的 back 参数带去外站。"""
+    back = request.values.get("back") or ""
+    # 反斜杠也要拒绝：浏览器可能把 /\evil.com 当成 //evil.com。
+    if back.startswith("/") and not back.startswith("//") and "\\" not in back:
+        return back
+    return default
+
+
 # --------------------------------------------------------------------------
 # 路由
 # --------------------------------------------------------------------------
 @app.route("/")
 def index():
-    """首页：新增表单 + 岗位列表（分页）。"""
+    """首页：新增表单 + 岗位列表（分页，支持按公司/职位模糊搜索）。"""
     try:
         page = int(request.args.get("page", 1))
     except (TypeError, ValueError):
@@ -107,20 +128,35 @@ def index():
     if page < 1:
         page = 1
 
+    keyword = (request.args.get("q") or "").strip()
+
+    where_sql = ""
+    where_params = []
+    if keyword:
+        where_sql = (
+            "WHERE (company LIKE ? ESCAPE '\\' OR position LIKE ? ESCAPE '\\')"
+        )
+        pattern = like_pattern(keyword)
+        where_params = [pattern, pattern]
+
     db = get_db()
-    total = db.execute("SELECT COUNT(*) AS c FROM jobs").fetchone()["c"]
+    total = db.execute(
+        "SELECT COUNT(*) AS c FROM jobs " + where_sql, where_params
+    ).fetchone()["c"]
     total_pages = max(1, (total + PER_PAGE - 1) // PER_PAGE)
     if page > total_pages:
         page = total_pages
 
     jobs = db.execute(
-        """
-        SELECT * FROM jobs
+        "SELECT * FROM jobs " + where_sql + """
         ORDER BY start_date DESC, id DESC
         LIMIT ? OFFSET ?
         """,
-        (PER_PAGE, (page - 1) * PER_PAGE),
+        where_params + [PER_PAGE, (page - 1) * PER_PAGE],
     ).fetchall()
+
+    # 分页链接和「改状态/删除」后的回跳都要带上搜索词，避免搜索状态丢失。
+    query_suffix = ("&q=" + quote(keyword, safe="")) if keyword else ""
 
     return render_template(
         "index.html",
@@ -128,6 +164,8 @@ def index():
         statuses=STATUSES,
         default_status=DEFAULT_STATUS,
         today=date.today().isoformat(),
+        keyword=keyword,
+        query_suffix=query_suffix,
         page=page,
         total=total,
         total_pages=total_pages,
@@ -202,7 +240,11 @@ def job_detail(job_id):
         (job_id,),
     ).fetchall()
 
-    return render_template("detail.html", job=job, history=history, statuses=STATUSES)
+    # 从搜索结果点进来的，返回时回到原来的搜索页。
+    back = safe_back(url_for("index"))
+    return render_template(
+        "detail.html", job=job, history=history, statuses=STATUSES, back=back
+    )
 
 
 @app.route("/jobs/<int:job_id>/status", methods=["POST"])
@@ -218,7 +260,7 @@ def update_status(job_id):
         flash("无效的状态值。", "error")
         return redirect(url_for("index", page=request.args.get("page", 1)))
 
-    back = request.form.get("back") or url_for("index")
+    back = safe_back(url_for("index"))
 
     if new_status == job["status"]:
         flash("状态没有变化，仍是「%s」。" % new_status, "warn")
@@ -256,7 +298,7 @@ def delete_job(job_id):
     db.execute("DELETE FROM jobs WHERE id = ?", (job_id,))
     db.commit()
     flash("岗位「%s - %s」已删除。" % (job["company"], job["position"]), "ok")
-    return redirect(url_for("index"))
+    return redirect(safe_back(url_for("index")))
 
 
 # --------------------------------------------------------------------------

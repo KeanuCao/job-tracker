@@ -15,9 +15,10 @@
   </table>
 
   <div class="detail-actions">
-    <a class="btn" href="{{ url_for('index') }}">返回列表</a>
+    <a class="btn" href="{{ back }}">返回列表</a>
     <form method="post" action="{{ url_for('delete_job', job_id=job['id']) }}" class="inline-form"
           onsubmit="return confirm('确定要删除这条岗位记录吗？删除后不可恢复。');">
+      <input type="hidden" name="back" value="{{ back }}">
       <button type="submit" class="btn danger">删除该岗位</button>
     </form>
   </div>
